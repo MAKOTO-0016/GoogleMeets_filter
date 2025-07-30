@@ -336,8 +336,8 @@ class MeetVideoFilter {
   applySkinSmoothing() {
     if (!this.originalVideoElement) return;
     
-    // 外見補正が有効な場合は自動美肌効果を適用
-    const effectiveSmoothing = this.appearanceCorrection ? 60 : this.skinSmoothing;
+    // 外見補正が有効な場合は大幅な美肌効果を適用
+    const effectiveSmoothing = this.appearanceCorrection ? 85 : this.skinSmoothing;
     
     if (effectiveSmoothing === 0) {
       // 美肌補正が0の場合は基本フィルターのみ適用
@@ -367,12 +367,16 @@ class MeetVideoFilter {
     
     // 肌の赤みを抑えて白く美しく見せるフィルターの組み合わせ
     const baseBrightness = this.brightness; // ベースの明るさ
-    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 35); // 肌の明るさを大幅向上
-    const blurAmount = skinSmoothingIntensity * 1.0; // 赤みを目立たなくするボカシ
-    const contrastReduction = 100 - (skinSmoothingIntensity * 20); // コントラストを下げて柔らかに
-    const saturationReduction = 100 - (skinSmoothingIntensity * 35); // 彩度を大幅下げて白っぽく
-    const redReduction = skinSmoothingIntensity * 15; // 赤みを特に抑制
-    const blueBoost = skinSmoothingIntensity * 8; // 青みで透明感
+    
+    // 外見補正時はさらに効果を強化
+    const intensityMultiplier = this.appearanceCorrection ? 1.5 : 1.0;
+    
+    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 35 * intensityMultiplier); // 肌の明るさを大幅向上
+    const blurAmount = skinSmoothingIntensity * 1.2 * intensityMultiplier; // 赤みを目立たなくするボカシを強化
+    const contrastReduction = 100 - (skinSmoothingIntensity * 25 * intensityMultiplier); // コントラストをさらに下げて柔らかに
+    const saturationReduction = 100 - (skinSmoothingIntensity * 40 * intensityMultiplier); // 彩度を大幅下げて白っぽく
+    const redReduction = skinSmoothingIntensity * 20 * intensityMultiplier; // 赤みを特に抑制
+    const blueBoost = skinSmoothingIntensity * 12 * intensityMultiplier; // 青みで透明感を強化
     
     // 赤み除去と美白効果を強化した複合フィルター
     const combinedFilter = [
@@ -388,7 +392,8 @@ class MeetVideoFilter {
     video.style.filter = combinedFilter;
     
     // 高度な美白処理（Canvas使用）
-    if (skinSmoothingIntensity > 0.2) {
+    // 外見補正が有効な場合は必ずCanvas処理を実行
+    if (this.appearanceCorrection || skinSmoothingIntensity > 0.15) {
       this.applyAdvancedSkinWhitening(video);
     }
   }
@@ -430,8 +435,10 @@ class MeetVideoFilter {
         
         // 肌色検出
         if (this.isAdvancedSkinTone(r, g, b)) {
-          // 美白効果の適用
-          const whiteningFactor = factor * 0.8;
+          // 美白効果の適用（外見補正時はさらに強化）
+          const baseWhiteningFactor = factor * 0.8;
+          const whiteningFactor = this.appearanceCorrection ? 
+            Math.min(1.0, baseWhiteningFactor * 1.3) : baseWhiteningFactor;
           
           // 肌を白く明るくする処理
           let newR = r;
@@ -456,18 +463,24 @@ class MeetVideoFilter {
           const blueBoost = 1 + (whiteningFactor * 0.15); // 青みを強化
           newB = Math.min(255, newB * blueBoost);
           
-          // 4. 周囲のピクセルとのブレンドで平滑化
+          // 4. 周囲のピクセルとのブレンドで平滑化（外見補正時はより幅広に）
           let totalR = 0, totalG = 0, totalB = 0, totalWeight = 0;
+          const smoothingRadius = this.appearanceCorrection ? 2 : 1; // 外見補正時はより幅広な範囲で平滑化
           
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const nIdx = ((y + dy) * width + (x + dx)) * 4;
-              const weight = (dx === 0 && dy === 0) ? 4 : 1; // 中心を重視
-              
-              totalR += data[nIdx] * weight;
-              totalG += data[nIdx + 1] * weight;
-              totalB += data[nIdx + 2] * weight;
-              totalWeight += weight;
+          for (let dy = -smoothingRadius; dy <= smoothingRadius; dy++) {
+            for (let dx = -smoothingRadius; dx <= smoothingRadius; dx++) {
+              if (y + dy >= 0 && y + dy < height && x + dx >= 0 && x + dx < width) {
+                const nIdx = ((y + dy) * width + (x + dx)) * 4;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const weight = this.appearanceCorrection ? 
+                  Math.exp(-(distance * distance) / 4) : // ガウシアン重み
+                  (dx === 0 && dy === 0) ? 4 : 1; // 通常の重み
+                
+                totalR += data[nIdx] * weight;
+                totalG += data[nIdx + 1] * weight;
+                totalB += data[nIdx + 2] * weight;
+                totalWeight += weight;
+              }
             }
           }
           
@@ -475,8 +488,8 @@ class MeetVideoFilter {
           const avgG = totalG / totalWeight;
           const avgB = totalB / totalWeight;
           
-          // 5. 美白処理した色と平滑化した色をブレンド
-          const smoothBlend = 0.3;
+          // 5. 美白処理した色と平滑化した色をブレンド（外見補正時はより強く）
+          const smoothBlend = this.appearanceCorrection ? 0.5 : 0.3; // 外見補正時はより強い平滑化
           newR = newR * (1 - smoothBlend) + avgR * smoothBlend;
           newG = newG * (1 - smoothBlend) + avgG * smoothBlend;
           newB = newB * (1 - smoothBlend) + avgB * smoothBlend;
