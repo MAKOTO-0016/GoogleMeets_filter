@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Google Meet 明るさ・美肌フィルター",
+  "version": "1.0.0",
+  "description": "Google Meetの映像に明るさ調整と美肌補正フィルターを追加",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://meet.google.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["content_script.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Google Meet フィルター"
+  }
+}

@@ -1,0 +1,191 @@
+/* Google Meet Brightness & Skin Filter Extension Styles */
+
+.meet-filter-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 280px;
+  background: rgba(32, 33, 36, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  font-size: 14px;
+  color: #e8eaed;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.meet-filter-panel.minimized {
+  width: 140px;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.minimize-btn {
+  background: none;
+  border: none;
+  color: #e8eaed;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.minimize-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.filter-content {
+  padding: 16px;
+}
+
+.filter-control {
+  margin-bottom: 20px;
+}
+
+.filter-control label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #e8eaed;
+}
+
+.filter-control input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.filter-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4285f4;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.filter-control input[type="range"]::-webkit-slider-thumb:hover {
+  background: #5a9df8;
+  transform: scale(1.1);
+}
+
+.filter-control input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4285f4;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+#reset-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e8eaed;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+#reset-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+#reset-btn:active {
+  transform: translateY(1px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .meet-filter-panel {
+    width: 260px;
+    right: 10px;
+    top: 10px;
+  }
+  
+  .meet-filter-panel.minimized {
+    width: 120px;
+  }
+}
+
+/* Animation for panel appearance */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.meet-filter-panel {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Ensure panel stays above Google Meet UI */
+.meet-filter-panel {
+  z-index: 999999 !important;
+}
+
+/* Style adjustments for better visibility on different backgrounds */
+.meet-filter-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(32, 33, 36, 0.1);
+  border-radius: 8px;
+  z-index: -1;
+}
+
+/* Hover effects for better interactivity */
+.meet-filter-panel:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Focus styles for accessibility */
+.filter-control input[type="range"]:focus {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
+
+#reset-btn:focus,
+.minimize-btn:focus {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
