@@ -113,11 +113,11 @@ class MeetVideoFilter {
         <div class="manual-controls">
           <div class="filter-control">
             <label>明るさ: <span id="brightness-value">${this.brightness}%</span></label>
-            <input type="range" id="brightness-slider" min="50" max="150" value="${this.brightness}">
+            <input type="range" id="brightness-slider" min="20" max="250" value="${this.brightness}">
           </div>
           <div class="filter-control">
             <label>美肌補正: <span id="smoothing-value">${this.skinSmoothing}%</span></label>
-            <input type="range" id="smoothing-slider" min="0" max="100" value="${this.skinSmoothing}">
+            <input type="range" id="smoothing-slider" min="0" max="150" value="${this.skinSmoothing}">
           </div>
         </div>
         <div class="filter-actions">
@@ -355,7 +355,9 @@ class MeetVideoFilter {
         filters.push('saturate(105%)');
       }
       
-      filters.unshift(`brightness(${Math.min(200, finalBrightness)}%)`);
+      // 明るさの制限を大幅に緩和して劇的な変化を実現
+      const dramaticBrightness = Math.max(10, Math.min(400, finalBrightness));
+      filters.unshift(`brightness(${dramaticBrightness}%)`);
       this.originalVideoElement.style.filter = filters.join(' ');
       return;
     }
@@ -371,12 +373,13 @@ class MeetVideoFilter {
     // 外見補正時はさらに効果を強化
     const intensityMultiplier = this.appearanceCorrection ? 1.5 : 1.0;
     
-    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 35 * intensityMultiplier); // 肌の明るさを大幅向上
-    const blurAmount = skinSmoothingIntensity * 1.2 * intensityMultiplier; // 赤みを目立たなくするボカシを強化
-    const contrastReduction = 100 - (skinSmoothingIntensity * 25 * intensityMultiplier); // コントラストをさらに下げて柔らかに
-    const saturationReduction = 100 - (skinSmoothingIntensity * 40 * intensityMultiplier); // 彩度を大幅下げて白っぽく
-    const redReduction = skinSmoothingIntensity * 20 * intensityMultiplier; // 赤みを特に抑制
-    const blueBoost = skinSmoothingIntensity * 12 * intensityMultiplier; // 青みで透明感を強化
+    // 美肌補正の効果を劇的に強化（スライダーの変化をより分かりやすく）
+    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 80 * intensityMultiplier); // 肌の明るさを劇的向上
+    const blurAmount = skinSmoothingIntensity * 2.5 * intensityMultiplier; // ボカシ効果を大幅強化
+    const contrastReduction = 100 - (skinSmoothingIntensity * 50 * intensityMultiplier); // コントラスト削減を劇的に
+    const saturationReduction = 100 - (skinSmoothingIntensity * 70 * intensityMultiplier); // 彩度削減を劇的に強化
+    const redReduction = skinSmoothingIntensity * 35 * intensityMultiplier; // 赤み抑制を劇的に強化
+    const blueBoost = skinSmoothingIntensity * 25 * intensityMultiplier; // 青み強化を劇的に
     
     // 赤み除去と美白効果を強化した複合フィルター
     const combinedFilter = [
@@ -392,8 +395,8 @@ class MeetVideoFilter {
     video.style.filter = combinedFilter;
     
     // 高度な美白処理（Canvas使用）
-    // 外見補正が有効な場合は必ずCanvas処理を実行
-    if (this.appearanceCorrection || skinSmoothingIntensity > 0.15) {
+    // 闾値を下げて低い値でも効果が見えるように
+    if (this.appearanceCorrection || skinSmoothingIntensity > 0.05) {
       this.applyAdvancedSkinWhitening(video);
     }
   }
@@ -445,22 +448,22 @@ class MeetVideoFilter {
           let newG = g;
           let newB = b;
           
-          // 1. 明度を大幅向上（美白効果）
-          const brightnessBoost = 1 + (whiteningFactor * 0.5);
+          // 1. 明度を劇的向上（美白効果を大幅強化）
+          const brightnessBoost = 1 + (whiteningFactor * 1.2); // 明るさを劇的に強化
           newR = Math.min(255, r * brightnessBoost);
           newG = Math.min(255, g * brightnessBoost);
           newB = Math.min(255, b * brightnessBoost);
           
-          // 2. 赤みを強力に抑制して白肌に
-          const redReduction = 1 - (whiteningFactor * 0.25); // 赤み抑制を強化
-          newR = newR * redReduction;
+          // 2. 赤みを劇的に抑制して白肌に
+          const redReduction = 1 - (whiteningFactor * 0.6); // 赤み抑制を劇的に強化
+          newR = Math.max(0, newR * redReduction);
           
-          // 3. 緑も軽く抑えて赤みを目立たなく
-          const greenReduction = 1 - (whiteningFactor * 0.1);
-          newG = newG * greenReduction;
+          // 3. 緑も強く抑えて赤みを目立たなく
+          const greenReduction = 1 - (whiteningFactor * 0.3); // 緑抑制を強化
+          newG = Math.max(0, newG * greenReduction);
           
-          // 4. 青みを増やして透明感と白さをプラス
-          const blueBoost = 1 + (whiteningFactor * 0.15); // 青みを強化
+          // 4. 青みを劇的に増やして透明感と白さをプラス
+          const blueBoost = 1 + (whiteningFactor * 0.4); // 青みを劇的に強化
           newB = Math.min(255, newB * blueBoost);
           
           // 4. 周囲のピクセルとのブレンドで平滑化（外見補正時はより幅広に）
