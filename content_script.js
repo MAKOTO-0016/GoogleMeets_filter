@@ -145,37 +145,63 @@ class MeetVideoFilter {
     const lowLightAdjustToggle = document.getElementById('low-light-adjust');
     const appearanceCorrectionToggle = document.getElementById('appearance-correction');
 
+    // リアルタイム反映を強化するためのデバウンス処理
+    let saveTimeout = null;
+    
+    const debouncedSave = () => {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => this.saveSettings(), 300);
+    };
+
     brightnessSlider.addEventListener('input', (e) => {
       this.brightness = parseInt(e.target.value);
       brightnessValue.textContent = `${this.brightness}%`;
-      this.applyFilters();
-      this.saveSettings();
+      this.applyFilters(); // 即座に適用
+      debouncedSave(); // 保存はデバウンス
+    });
+    
+    // リアルタイム反映をさらに強化
+    brightnessSlider.addEventListener('mousemove', (e) => {
+      if (e.buttons === 1) { // マウスボタンが押されている時
+        this.brightness = parseInt(e.target.value);
+        brightnessValue.textContent = `${this.brightness}%`;
+        this.applyFilters();
+      }
     });
 
     smoothingSlider.addEventListener('input', (e) => {
       this.skinSmoothing = parseInt(e.target.value);
       smoothingValue.textContent = `${this.skinSmoothing}%`;
-      this.applyFilters();
-      this.saveSettings();
+      this.applyFilters(); // 即座に適用
+      debouncedSave(); // 保存はデバウンス
+    });
+    
+    // リアルタイム反映をさらに強化
+    smoothingSlider.addEventListener('mousemove', (e) => {
+      if (e.buttons === 1) { // マウスボタンが押されている時
+        this.skinSmoothing = parseInt(e.target.value);
+        smoothingValue.textContent = `${this.skinSmoothing}%`;
+        this.applyFilters();
+      }
     });
 
-    // トグル機能のイベントリスナー
+    // トグル機能のイベントリスナー（デバウンス処理付き）
     portraitLightingToggle.addEventListener('change', (e) => {
       this.portraitLighting = e.target.checked;
-      this.applyFilters();
-      this.saveSettings();
+      this.applyFilters(); // 即座に適用
+      debouncedSave(); // 保存はデバウンス
     });
 
     lowLightAdjustToggle.addEventListener('change', (e) => {
       this.lowLightAdjust = e.target.checked;
-      this.applyFilters();
-      this.saveSettings();
+      this.applyFilters(); // 即座に適用
+      debouncedSave(); // 保存はデバウンス
     });
 
     appearanceCorrectionToggle.addEventListener('change', (e) => {
       this.appearanceCorrection = e.target.checked;
-      this.applyFilters();
-      this.saveSettings();
+      this.applyFilters(); // 即座に適用
+      debouncedSave(); // 保存はデバウンス
     });
 
     resetBtn.addEventListener('click', () => {
@@ -336,26 +362,39 @@ class MeetVideoFilter {
   applySkinSmoothing() {
     if (!this.originalVideoElement) return;
     
-    // 外見補正が有効な場合は大幅な美肌効果を適用
-    const effectiveSmoothing = this.appearanceCorrection ? 85 : this.skinSmoothing;
+    // トグルボタンとスライダーを独立して調整可能に
+    // 外見補正がオンの場合はベース効果にスライダー値を加算
+    let effectiveSmoothing = this.skinSmoothing;
+    if (this.appearanceCorrection) {
+      effectiveSmoothing = Math.max(effectiveSmoothing, 60) + (this.skinSmoothing * 0.5); // ベース効果 + スライダー調整
+    }
     
+    if (effectiveSmoothing === 0 && !this.portraitLighting && !this.lowLightAdjust) {
+      // 美肌補正もトグルもオフの場合は明るさのみ適用
+      const dramaticBrightness = Math.max(10, Math.min(400, this.brightness));
+      this.originalVideoElement.style.filter = `brightness(${dramaticBrightness}%)`;
+      return;
+    }
+    
+    // トグルボタンとスライダーを組み合わせた効果を適用
+    let filters = [];
+    let finalBrightness = this.brightness;
+    
+    // ポートレート照明の効果をスライダーと独立して適用
+    if (this.portraitLighting) {
+      finalBrightness += 15;
+      filters.push('drop-shadow(0 0 10px rgba(255,255,255,0.3))');
+    }
+    
+    // 低照度調整の効果をスライダーと独立して適用
+    if (this.lowLightAdjust) {
+      finalBrightness += 20;
+      filters.push('contrast(110%)');
+      filters.push('saturate(105%)');
+    }
+    
+    // 美肌補正が無い場合は基本フィルターのみ適用
     if (effectiveSmoothing === 0) {
-      // 美肌補正が0の場合は基本フィルターのみ適用
-      let filters = [];
-      let finalBrightness = this.brightness;
-      
-      if (this.portraitLighting) {
-        finalBrightness += 15;
-        filters.push('drop-shadow(0 0 10px rgba(255,255,255,0.3))');
-      }
-      
-      if (this.lowLightAdjust) {
-        finalBrightness += 20;
-        filters.push('contrast(110%)');
-        filters.push('saturate(105%)');
-      }
-      
-      // 明るさの制限を大幅に緩和して劇的な変化を実現
       const dramaticBrightness = Math.max(10, Math.min(400, finalBrightness));
       filters.unshift(`brightness(${dramaticBrightness}%)`);
       this.originalVideoElement.style.filter = filters.join(' ');
@@ -373,13 +412,13 @@ class MeetVideoFilter {
     // 外見補正時はさらに効果を強化
     const intensityMultiplier = this.appearanceCorrection ? 1.5 : 1.0;
     
-    // 美肌補正の効果を劇的に強化（スライダーの変化をより分かりやすく）
-    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 80 * intensityMultiplier); // 肌の明るさを劇的向上
-    const blurAmount = skinSmoothingIntensity * 2.5 * intensityMultiplier; // ボカシ効果を大幅強化
-    const contrastReduction = 100 - (skinSmoothingIntensity * 50 * intensityMultiplier); // コントラスト削減を劇的に
-    const saturationReduction = 100 - (skinSmoothingIntensity * 70 * intensityMultiplier); // 彩度削減を劇的に強化
-    const redReduction = skinSmoothingIntensity * 35 * intensityMultiplier; // 赤み抑制を劇的に強化
-    const blueBoost = skinSmoothingIntensity * 25 * intensityMultiplier; // 青み強化を劇的に
+    // 美肌補正の効果をさらに劇的に強化（スライダーの小さな変化でも大きな効果）
+    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 120 * intensityMultiplier); // 肌の明るさをさらに劇的向上
+    const blurAmount = skinSmoothingIntensity * 3.5 * intensityMultiplier; // ボカシ効果をさらに大幅強化
+    const contrastReduction = 100 - (skinSmoothingIntensity * 70 * intensityMultiplier); // コントラスト削減をさらに劇的に
+    const saturationReduction = 100 - (skinSmoothingIntensity * 90 * intensityMultiplier); // 彩度削減をさらに劇的に強化
+    const redReduction = skinSmoothingIntensity * 50 * intensityMultiplier; // 赤み抑制をさらに劇的に強化
+    const blueBoost = skinSmoothingIntensity * 35 * intensityMultiplier; // 青み強化をさらに劇的に
     
     // 赤み除去と美白効果を強化した複合フィルター
     const combinedFilter = [
@@ -448,8 +487,8 @@ class MeetVideoFilter {
           let newG = g;
           let newB = b;
           
-          // 1. 明度を劇的向上（美白効果を大幅強化）
-          const brightnessBoost = 1 + (whiteningFactor * 1.2); // 明るさを劇的に強化
+          // 1. 明度をさらに劇的向上（美白効果をさらに大幅強化）
+          const brightnessBoost = 1 + (whiteningFactor * 1.8); // 明るさをさらに劇的に強化
           newR = Math.min(255, r * brightnessBoost);
           newG = Math.min(255, g * brightnessBoost);
           newB = Math.min(255, b * brightnessBoost);
