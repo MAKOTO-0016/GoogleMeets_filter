@@ -3,6 +3,9 @@ class MeetVideoFilter {
   constructor() {
     this.brightness = 100;
     this.skinSmoothing = 0;
+    this.portraitLighting = false;
+    this.lowLightAdjust = false;
+    this.appearanceCorrection = false;
     this.canvas = null;
     this.ctx = null;
     this.animationId = null;
@@ -39,6 +42,9 @@ class MeetVideoFilter {
       
       this.brightness = result.brightness || 100;
       this.skinSmoothing = result.skinSmoothing || 0;
+      this.portraitLighting = result.portraitLighting || false;
+      this.lowLightAdjust = result.lowLightAdjust || false;
+      this.appearanceCorrection = result.appearanceCorrection || false;
     } catch (error) {
       console.log('デフォルト設定を使用します');
     }
@@ -51,7 +57,10 @@ class MeetVideoFilter {
           action: 'saveSettings',
           data: {
             brightness: this.brightness,
-            skinSmoothing: this.skinSmoothing
+            skinSmoothing: this.skinSmoothing,
+            portraitLighting: this.portraitLighting,
+            lowLightAdjust: this.lowLightAdjust,
+            appearanceCorrection: this.appearanceCorrection
           }
         }, resolve);
       });
@@ -78,13 +87,38 @@ class MeetVideoFilter {
         <button class="minimize-btn" id="minimize-btn">−</button>
       </div>
       <div class="filter-content" id="filter-content">
-        <div class="filter-control">
-          <label>明るさ: <span id="brightness-value">${this.brightness}%</span></label>
-          <input type="range" id="brightness-slider" min="50" max="150" value="${this.brightness}">
+        <div class="zoom-features">
+          <div class="feature-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" id="portrait-lighting" ${this.portraitLighting ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+              <span class="feature-text">💡 ポートレート照明</span>
+            </label>
+          </div>
+          <div class="feature-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" id="low-light-adjust" ${this.lowLightAdjust ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+              <span class="feature-text">☀️ 低照度に合わせて調整する</span>
+            </label>
+          </div>
+          <div class="feature-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" id="appearance-correction" ${this.appearanceCorrection ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+              <span class="feature-text">😊 外見補正</span>
+            </label>
+          </div>
         </div>
-        <div class="filter-control">
-          <label>美肌補正: <span id="smoothing-value">${this.skinSmoothing}%</span></label>
-          <input type="range" id="smoothing-slider" min="0" max="100" value="${this.skinSmoothing}">
+        <div class="manual-controls">
+          <div class="filter-control">
+            <label>明るさ: <span id="brightness-value">${this.brightness}%</span></label>
+            <input type="range" id="brightness-slider" min="50" max="150" value="${this.brightness}">
+          </div>
+          <div class="filter-control">
+            <label>美肌補正: <span id="smoothing-value">${this.skinSmoothing}%</span></label>
+            <input type="range" id="smoothing-slider" min="0" max="100" value="${this.skinSmoothing}">
+          </div>
         </div>
         <div class="filter-actions">
           <button id="reset-btn">リセット</button>
@@ -105,6 +139,11 @@ class MeetVideoFilter {
     const smoothingValue = document.getElementById('smoothing-value');
     const resetBtn = document.getElementById('reset-btn');
     const minimizeBtn = document.getElementById('minimize-btn');
+    
+    // Zoom風機能のトグルボタン
+    const portraitLightingToggle = document.getElementById('portrait-lighting');
+    const lowLightAdjustToggle = document.getElementById('low-light-adjust');
+    const appearanceCorrectionToggle = document.getElementById('appearance-correction');
 
     brightnessSlider.addEventListener('input', (e) => {
       this.brightness = parseInt(e.target.value);
@@ -120,11 +159,38 @@ class MeetVideoFilter {
       this.saveSettings();
     });
 
+    // トグル機能のイベントリスナー
+    portraitLightingToggle.addEventListener('change', (e) => {
+      this.portraitLighting = e.target.checked;
+      this.applyFilters();
+      this.saveSettings();
+    });
+
+    lowLightAdjustToggle.addEventListener('change', (e) => {
+      this.lowLightAdjust = e.target.checked;
+      this.applyFilters();
+      this.saveSettings();
+    });
+
+    appearanceCorrectionToggle.addEventListener('change', (e) => {
+      this.appearanceCorrection = e.target.checked;
+      this.applyFilters();
+      this.saveSettings();
+    });
+
     resetBtn.addEventListener('click', () => {
       this.brightness = 100;
       this.skinSmoothing = 0;
+      this.portraitLighting = false;
+      this.lowLightAdjust = false;
+      this.appearanceCorrection = false;
+      
       brightnessSlider.value = 100;
       smoothingSlider.value = 0;
+      portraitLightingToggle.checked = false;
+      lowLightAdjustToggle.checked = false;
+      appearanceCorrectionToggle.checked = false;
+      
       brightnessValue.textContent = '100%';
       smoothingValue.textContent = '0%';
       this.applyFilters();
@@ -206,16 +272,42 @@ class MeetVideoFilter {
   }
 
   applyFilters() {
-    if (this.originalVideoElement) {
-      // Apply brightness filter via CSS
-      const brightnessFilter = `brightness(${this.brightness}%)`;
-      this.originalVideoElement.style.filter = brightnessFilter;
-
-      // Skin smoothing will be applied in the processing loop
-      if (this.skinSmoothing > 0 && !this.isProcessing) {
-        this.startProcessingLoop();
-      }
+    if (!this.originalVideoElement) return;
+    
+    // 基本フィルターの組み合わせ
+    let filters = [];
+    
+    // 1. 基本明るさ
+    let finalBrightness = this.brightness;
+    
+    // 2. ポートレート照明（顔を明るく照らす）
+    if (this.portraitLighting) {
+      finalBrightness += 15; // 顔を明るく
+      filters.push('drop-shadow(0 0 10px rgba(255,255,255,0.3))'); // 柔らかな光
     }
+    
+    // 3. 低照度自動調整
+    if (this.lowLightAdjust) {
+      finalBrightness += 20; // 暗い環境での明るさ向上
+      filters.push('contrast(110%)'); // コントラスト向上
+      filters.push('saturate(105%)'); // 彩度微調整
+    }
+    
+    // 4. 外見補正（美肌効果）
+    if (this.appearanceCorrection) {
+      this.applySkinSmoothing(); // 美肌処理を実行
+      return; // 美肌処理でフィルターが適用される
+    }
+    
+    // 5. 手動美肌補正
+    if (this.skinSmoothing > 0) {
+      this.applySkinSmoothing();
+      return;
+    }
+    
+    // 基本フィルターの適用
+    filters.unshift(`brightness(${Math.min(200, finalBrightness)}%)`);
+    this.originalVideoElement.style.filter = filters.join(' ');
   }
 
   startProcessingLoop() {
@@ -242,16 +334,36 @@ class MeetVideoFilter {
   }
 
   applySkinSmoothing() {
-    if (!this.originalVideoElement || this.skinSmoothing === 0) {
-      // 美肌補正が0の場合は明るさのみ適用
-      this.originalVideoElement.style.filter = `brightness(${this.brightness}%)`;
+    if (!this.originalVideoElement) return;
+    
+    // 外見補正が有効な場合は自動美肌効果を適用
+    const effectiveSmoothing = this.appearanceCorrection ? 60 : this.skinSmoothing;
+    
+    if (effectiveSmoothing === 0) {
+      // 美肌補正が0の場合は基本フィルターのみ適用
+      let filters = [];
+      let finalBrightness = this.brightness;
+      
+      if (this.portraitLighting) {
+        finalBrightness += 15;
+        filters.push('drop-shadow(0 0 10px rgba(255,255,255,0.3))');
+      }
+      
+      if (this.lowLightAdjust) {
+        finalBrightness += 20;
+        filters.push('contrast(110%)');
+        filters.push('saturate(105%)');
+      }
+      
+      filters.unshift(`brightness(${Math.min(200, finalBrightness)}%)`);
+      this.originalVideoElement.style.filter = filters.join(' ');
       return;
     }
 
     const video = this.originalVideoElement;
     
     // 美白効果を重視したフィルター設定
-    const skinSmoothingIntensity = this.skinSmoothing / 100;
+    const skinSmoothingIntensity = effectiveSmoothing / 100;
     
     // 肌を白く明るく見せるフィルターの組み合わせ
     const baseBrightness = this.brightness; // ベースの明るさ
