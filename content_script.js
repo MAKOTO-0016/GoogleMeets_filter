@@ -365,22 +365,24 @@ class MeetVideoFilter {
     // 美白効果を重視したフィルター設定
     const skinSmoothingIntensity = effectiveSmoothing / 100;
     
-    // 肌を白く明るく見せるフィルターの組み合わせ
+    // 肌の赤みを抑えて白く美しく見せるフィルターの組み合わせ
     const baseBrightness = this.brightness; // ベースの明るさ
-    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 25); // 肌の明るさを大幅向上
-    const blurAmount = skinSmoothingIntensity * 0.8; // やや強めのぼかし
-    const contrastReduction = 100 - (skinSmoothingIntensity * 15); // コントラストを下げて柔らかに
-    const saturationReduction = 100 - (skinSmoothingIntensity * 20); // 彩度を下げて白っぽく
-    const exposure = 100 + (skinSmoothingIntensity * 30); // 露出を上げて明るく
+    const skinBrightness = baseBrightness + (skinSmoothingIntensity * 35); // 肌の明るさを大幅向上
+    const blurAmount = skinSmoothingIntensity * 1.0; // 赤みを目立たなくするボカシ
+    const contrastReduction = 100 - (skinSmoothingIntensity * 20); // コントラストを下げて柔らかに
+    const saturationReduction = 100 - (skinSmoothingIntensity * 35); // 彩度を大幅下げて白っぽく
+    const redReduction = skinSmoothingIntensity * 15; // 赤みを特に抑制
+    const blueBoost = skinSmoothingIntensity * 8; // 青みで透明感
     
-    // 美白効果を強化した複合フィルター
+    // 赤み除去と美白効果を強化した複合フィルター
     const combinedFilter = [
-      `brightness(${skinBrightness}%)`, // 肌を明るく
-      `blur(${blurAmount}px)`, // 肌の粗を目立たなく
+      `brightness(${skinBrightness}%)`, // 肌を大幅明るく
+      `blur(${blurAmount}px)`, // 赤みを目立たなくする
       `contrast(${contrastReduction}%)`, // 柔らかな質感
-      `saturate(${saturationReduction}%)`, // 白っぽい肌色
-      `sepia(${skinSmoothingIntensity * 5}%)`, // 軽いセピアで温かみ
-      `hue-rotate(${skinSmoothingIntensity * 2}deg)` // 軽い色相調整
+      `saturate(${saturationReduction}%)`, // 彩度を大幅下げて白肌に
+      `sepia(-${redReduction}%)`, // 赤みを抑制
+      `hue-rotate(${blueBoost}deg)`, // 青みで透明感をプラス
+      `drop-shadow(0 0 5px rgba(255,255,255,${skinSmoothingIntensity * 0.2}))` // 柔らかな白い光
     ].join(' ');
     
     video.style.filter = combinedFilter;
@@ -437,17 +439,21 @@ class MeetVideoFilter {
           let newB = b;
           
           // 1. 明度を大幅向上（美白効果）
-          const brightnessBoost = 1 + (whiteningFactor * 0.4);
+          const brightnessBoost = 1 + (whiteningFactor * 0.5);
           newR = Math.min(255, r * brightnessBoost);
           newG = Math.min(255, g * brightnessBoost);
           newB = Math.min(255, b * brightnessBoost);
           
-          // 2. 赤みを抑えて白っぽく
-          const redReduction = 1 - (whiteningFactor * 0.15);
+          // 2. 赤みを強力に抑制して白肌に
+          const redReduction = 1 - (whiteningFactor * 0.25); // 赤み抑制を強化
           newR = newR * redReduction;
           
-          // 3. 青みを少し増やして透明感
-          const blueBoost = 1 + (whiteningFactor * 0.1);
+          // 3. 緑も軽く抑えて赤みを目立たなく
+          const greenReduction = 1 - (whiteningFactor * 0.1);
+          newG = newG * greenReduction;
+          
+          // 4. 青みを増やして透明感と白さをプラス
+          const blueBoost = 1 + (whiteningFactor * 0.15); // 青みを強化
           newB = Math.min(255, newB * blueBoost);
           
           // 4. 周囲のピクセルとのブレンドで平滑化
@@ -475,11 +481,17 @@ class MeetVideoFilter {
           newG = newG * (1 - smoothBlend) + avgG * smoothBlend;
           newB = newB * (1 - smoothBlend) + avgB * smoothBlend;
           
-          // 6. 最終的な美白効果を適用
-          const finalWhitening = 1 + (whiteningFactor * 0.2);
-          newData[idx] = Math.min(255, newR * finalWhitening);
-          newData[idx + 1] = Math.min(255, newG * finalWhitening);
-          newData[idx + 2] = Math.min(255, newB * finalWhitening);
+          // 6. 最終的な美白効果を適用（赤み除去を重視）
+          const finalWhitening = 1 + (whiteningFactor * 0.3); // 美白効果を強化
+          
+          // 赤成分をさらに抑制し、青成分を強化
+          const finalR = Math.min(255, newR * finalWhitening * 0.85); // 赤をさらに抑制
+          const finalG = Math.min(255, newG * finalWhitening * 0.92); // 緑も軽く抑制
+          const finalB = Math.min(255, newB * finalWhitening * 1.1);  // 青を強化
+          
+          newData[idx] = finalR;
+          newData[idx + 1] = finalG;
+          newData[idx + 2] = finalB;
           
         } else {
           // 肌以外の領域はそのまま保持
